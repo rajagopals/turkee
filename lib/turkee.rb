@@ -50,11 +50,11 @@ module Turkee
               
               puts "param_hash = #{param_hash}"
               bad_count = 0
-              param_hash.each do |key, value|
-                if value != "yes" and value != "no"
-                  bad_count++
-                end
+
+              param_hash.each do |key, value|                
+                bad_count = bad_count + 1 if(value != "yes" and value != "no")
               end
+
               if bad_count > 1
                 assignment.reject!('Answers to two or more entires have not been selected!')
                 next
