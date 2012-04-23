@@ -35,27 +35,45 @@ module Turkee
           turks.each do |turk|
             hit   = RTurk::Hit.new(turk.hit_id)
 
-            models = []
             hit.assignments.each do |assignment|
               next unless submitted?(assignment.status)
               next unless TurkeeImportedAssignment.find_by_assignment_id(assignment.id).nil?
 
               params     = assignment_params(assignment.answers)
               param_hash = Rack::Utils.parse_nested_query(params)
-              model      = find_model(param_hash)
 
+              model = Object::const_get('Turk').descends_from_active_record? rescue next
               next if model.nil?
+              
+              model = Object::const_get('TurkAnswer').descends_from_active_record? rescue next
+              next if model.nil?
+              
               puts "param_hash = #{param_hash}"
-              result = model.create(param_hash[model.to_s.underscore])
-
-              # If there's a custom approve? method, see if we should approve the submitted assignment
-              #  otherwise just approve it by default
-              process_result(assignment, result, turk)
-
+              bad_count = 0
+              param_hash.each do |key, value|
+                if value != "yes" and value != "no"
+                  bad_count++
+                end
+              end
+              if bad_count > 1
+                assignment.reject!('Answers to two or more entires have not been selected!')
+                next
+              end
+              
+              param_hash.each do |key, value|
+                if value == "yes" or value == "no"
+                  questionId = Turk.find(key).id
+                  TurkAnswer.create(:answer => value, :turk_id => questionId)
+                end
+              end
+              
+              increment_complete_assignments(turk)
+              assignment.approve!('Thank you!')
+                            
               TurkeeImportedAssignment.create(:assignment_id => assignment.id) rescue nil
             end
 
-            check_hit_completeness(hit, turk, models)
+            check_hit_completeness(hit, turk)
           end
         end
       rescue Lockfile::MaxTriesLockError => e
@@ -140,13 +158,12 @@ module Turkee
       @logger ||= Logger.new($stderr)
     end
 
-    def self.check_hit_completeness(hit, turk, models)
+    def self.check_hit_completeness(hit, turk)
       puts "#### turk.completed_assignments == turk.hit_num_assignments :: #{turk.completed_assignments} == #{turk.hit_num_assignments}"
       if turk.completed_assignments == turk.hit_num_assignments
         hit.dispose!
         turk.complete = true
         turk.save
-        models.each { |model| model.hit_complete(turk) if model.respond_to?(:hit_complete) }
       end
     end
 
@@ -189,15 +206,15 @@ module Turkee
     #  in the current app that would match the properties of one of the nested hashes
     #  x = {:submit = 'Create', :iteration_vote => {:iteration_id => 1}}
     #  The above _should_ return an IterationVote model
-    def self.find_model(param_hash)
-      param_hash.each do |k, v|
-        if v.is_a?(Hash)
-          model = Object::const_get(k.to_s.camelize) rescue next
-          return model if model.descends_from_active_record? rescue next
-        end
-      end
-      nil
-    end
+    # def self.find_model(param_hash)
+    #   param_hash.each do |k, v|
+    #     if v.is_a?(Hash)
+    #       model = Object::const_get(k.to_s.camelize) rescue next
+    #       return model if model.descends_from_active_record? rescue next
+    #     end
+    #   end
+    #   nil
+    # end
 
     def self.form_url(host, typ, params = {})
       @app ||= ActionController::Integration::Session.new(Rails.application)
