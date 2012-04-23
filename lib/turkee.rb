@@ -51,7 +51,9 @@ module Turkee
               puts "param_hash = #{param_hash}"
               bad_count = 0
 
-              param_hash.each do |key, value|                
+              param_hash.each do |key, value|     
+                # Take only the useful values from the hash.
+                Integer(key) rescue next           
                 bad_count = bad_count + 1 if(value != "yes" and value != "no")
               end
 
@@ -61,6 +63,7 @@ module Turkee
               end
               
               param_hash.each do |key, value|
+                Integer(key) rescue next
                 if value == "yes" or value == "no"
                   questionId = Turk.find(key).id
                   TurkAnswer.create(:answer => value, :turk_id => questionId)
