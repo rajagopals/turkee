@@ -44,9 +44,6 @@ module Turkee
 
               model = Object::const_get(turk_question_model_name).descends_from_active_record? rescue next
               next if model.nil?
-
-              model = Object::const_get(turk_question_model_name).turk_answers rescue next
-              next if model.nil?
               
               puts "param_hash = #{param_hash}"
               bad_count = 0
@@ -67,7 +64,7 @@ module Turkee
               param_hash.each do |key, value|
                 Integer(key) rescue next
                 if value == "yes" or value == "no"
-                  questionModel.turk_answers.create(:answer => value)
+                  questionModel.turk_answers.create(:answer => value) rescue next
                 end
               end
               
