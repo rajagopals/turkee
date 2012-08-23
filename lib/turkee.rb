@@ -37,7 +37,7 @@ module Turkee
 
             hit.assignments.each do |assignment|
               next unless submitted?(assignment.status)
-              next unless TurkeeImportedAssignment.find_by_assignment_id(assignment.id).nil?
+              next unless TurkeeImportedAssignment.find_by_assignment_id(assignment.assignment_id).nil?
 
               params     = assignment_params(assignment.answers)
               param_hash = Rack::Utils.parse_nested_query(params)
@@ -72,7 +72,7 @@ module Turkee
               
               increment_complete_assignments(turk)
               assignment.approve!('Thank you!')
-              TurkeeImportedAssignment.create(:assignment_id => assignment.id)                                      
+              TurkeeImportedAssignment.create(:assignment_id => assignment.assignment_id)                                      
             end            
             check_hit_completeness(hit, turk)
           end
