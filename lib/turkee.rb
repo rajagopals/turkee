@@ -24,7 +24,7 @@ module Turkee
     # Use this method to go out and retrieve the data for all of the posted Turk Tasks.
     #  Each specific TurkeeTask object (determined by task_type field) is in charge of
     #  accepting/rejecting the assignment and importing the data into their respective tables.
-    def self.process_hits(turkee_task = nil)
+    def self.process_hits(turkee_task = nil, turk_question_model_name = 'Turk')
 
       begin
         # Using a lockfile to prevent multiple calls to Amazon.
@@ -42,10 +42,10 @@ module Turkee
               params     = assignment_params(assignment.answers)
               param_hash = Rack::Utils.parse_nested_query(params)
 
-              model = Object::const_get('Turk').descends_from_active_record? rescue next
+              model = Object::const_get(turk_question_model_name).descends_from_active_record? rescue next
               next if model.nil?
-              
-              model = Object::const_get('TurkAnswer').descends_from_active_record? rescue next
+
+              model = Object::const_get(turk_question_model_name).turk_answers rescue next
               next if model.nil?
               
               puts "param_hash = #{param_hash}"
@@ -62,11 +62,12 @@ module Turkee
                 next
               end
               
+              questionModel = Object::const_get(turk_question_model_name)
+              
               param_hash.each do |key, value|
                 Integer(key) rescue next
                 if value == "yes" or value == "no"
-                  questionId = Turk.find(key).id
-                  TurkAnswer.create(:answer => value, :turk_id => questionId)
+                  questionModel.turk_answers.create(:answer => value)
                 end
               end
               
