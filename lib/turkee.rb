@@ -45,7 +45,9 @@ module Turkee
               model = Object::const_get(turk_question_model_name).descends_from_active_record? rescue next
               next if model.nil?
               
-              puts "param_hash = #{param_hash}"
+              #puts "param_hash = #{param_hash}"
+              puts "Assignment " + assignment.inspect
+              
               bad_count = 0
 
               param_hash.each do |key, value|     
@@ -64,16 +66,14 @@ module Turkee
               param_hash.each do |key, value|
                 Integer(key) rescue next
                 if value == "yes" or value == "no"
-                  questionModel.turk_answers.create(:answer => value) rescue next
+                  questionModel.find(key.to_i).turk_answers.create(:answer => value)
                 end
               end
               
               increment_complete_assignments(turk)
               assignment.approve!('Thank you!')
-                            
-              TurkeeImportedAssignment.create(:assignment_id => assignment.id) rescue nil
-            end
-
+              TurkeeImportedAssignment.create(:assignment_id => assignment.id)                                      
+            end            
             check_hit_completeness(hit, turk)
           end
         end
